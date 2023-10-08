@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 引入样式 -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
+    <link rel="stylesheet" href="node_modules/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
+    <script src="node_modules/vue/dist/vue.js"></script>
+    <!-- <script src="https://unpkg.com/element-ui/lib/index.js"></script> -->
+    <script src="node_modules/element-ui/lib/index.js"></script>
+    <!-- <script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
+    <script src="node_modules/axios/dist/axios.min.js"></script>
+    <script src="node_modules/recordrtc/RecordRTC.js"></script>
+    <title>Document</title>
+</head>
+
+<body>
+    <div id="app">
+        <div class="form">
+            <el-form :model="form" ref="form" label-width="80px" :rules="rules" :disabled="formDisabled">
+                <el-form-item label="姓名" prop="name">
+                    <el-input v-model="form.name"></el-input>
+                </el-form-item>
+                <el-form-item label="性别" prop="female">
+                    <el-radio-group v-model="form.female">
+                        <el-radio label="男"></el-radio>
+                        <el-radio label="女"></el-radio>
+                    </el-radio-group>
+                </el-form-item>
+                <el-form-item label="年龄" prop="age">
+                    <el-input v-model.number="form.age" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item>
+                    <el-button type="primary" @click="submitForm()" :disabled="submitBtnDisabled"> 确认 </el-button>
+                    <el-button type="primary" @click="resetForm()" :disabled="resetBtnDisabled"> 切换账号 </el-button>
+                </el-form-item>
+            </el-form>
+        </div>
+        <div class="recoder" v-show="recorderShow">
+            <audio src="" ref="audio" class="audio"></audio>
+            <el-carousel ref="carousel" :autoplay=false arrow="never">
+                <el-carousel-item v-for="(item, i) in temporaryRecordText" :key="i">
+                    <p>{{ item.text }}</p>
+                </el-carousel-item>
+                <span class="idx"> {{ idx }} / {{ num }} </span>
+            </el-carousel>
+            <el-button type="primary" @click="controlRecorder()" :disabled="recoderBtnDisabled"> {{ isRecording ? '停止' :
+                '开始录音' }}
+            </el-button>
+            <el-button type="primary" @click="play" :disabled="playBtnDisabled"> {{ isPlay ? '暂停' : '播放' }} </el-button>
+            <el-button type="primary" @click="next" :disabled="idx==num || nextBtnDisabled"> 下一条 </el-button>
+        </div>
+    </div>
+</body>
+
+<script>
+    new Vue({
+        el: '#app',
+        data() {
+            return {
+                isRecording: false,
+                recoderBtnDisabled: false,
+                isPlay: false,
+                playBtnDisabled: false,
+                formDisabled: false,
+                submitBtnDisabled: false,
+                nextBtnDisabled: false,
+                recorderShow: false,
+                form: {
+                    name: "",
+                    female: '',
+                    age: ''
+                },
+                rules: {
+                    name: [
+                        { required: true, message: '请输入姓名', trigger: 'blur' }
+                    ],
+                    female: [
+                        { required: true, message: '请选择性别', trigger: 'change' }
+                    ],
+                    age: [
+                        { required: true, message: '年龄不能为空' },
+                        { type: 'number', message: '年龄必须为数字值' }
+                    ]
+                },
+                allRecordText: [],
+                temporaryRecordText: [],
+                num: 0,
+                idx: 1,
+                isRecoded: false,
+                recorder: null,
+                sampleRate: 48000
+            }
+        },
+        computed: {
+            resetBtnDisabled() {
+                return !(this.submitBtnDisabled && !this.isRecording && !this.isPlay)
+            }
+        },
+        mounted() {
+            this.$refs.audio.addEventListener('ended', () => {
+                this.isPlay = false
+                this.recoderBtnDisabled = false
+            })
+        },
+        methods: {
+            submitForm() {
+                this.$refs.form.validate((valid) => {
+                    if (valid) {
+                        this.submitBtnDisabled = true
+                        this.recorderShow = true
+                        this.formDisabled = !this.formDisabled
+                        this.getReadText()
+                        this.isRecoded = false
+                    } else {
+                        return false;
+                    }
+                });
+            },
+            resetForm() {
+                this.$refs.form.resetFields();
+                this.submitBtnDisabled = !this.submitBtnDisabled
+                this.formDisabled = !this.formDisabled
+                this.recorderShow = !this.recorderShow
+                this.idx = 1
+                this.allRecordText = []
+                this.temporaryRecordText = []
+            },
+            controlRecorder() {
+                if (this.isRecording == true) {  // 录音中
+                    this.stopRecording()
+                } else {
+                    this.startRecording()
+                }
+                this.isRecording = !this.isRecording
+                this.playBtnDisabled = !this.playBtnDisabled
+                this.nextBtnDisabled = !this.nextBtnDisabled
+            },
+            startRecording() {
+                const that = this
+                navigator.mediaDevices.getUserMedia({
+                    audio: true
+                }).then(async function (stream) {
+                    that.recorder = RecordRTC(stream, {
+                        type: 'audio',
+                        mimeType: 'audio/wav',
+                        recorderType: StereoAudioRecorder,
+                        bitsPerSecond: 1536000,
+                        audioBitsPerSecond: 1536000,
+                        sampleRate: this.sampleRate,
+                        bufferSize: 2048,
+                        numberOfAudioChannels: 2
+                    });
+                    that.recorder.startRecording()
+                })
+            },
+            stopRecording() {
+                this.recorder.stopRecording(() => {
+                    let blob = new Blob([this.recorder.getBlob()], { type: "audio/wav" });
+                    let form = this.form
+                    //自动化名称
+                    // let filename = `${form.name}_${form.female}_${form.age}_${this.allRecordText[this.idx - 1].id}_${this.allRecordText[this.idx - 1].text}.wav`
+                    //TTS训练名称
+                    let filename = `${form.name}_${form.female}_${form.age}_${this.allRecordText[this.idx - 1].id}.wav`
+                    this.saveFile(filename, blob)
+                    this.isRecoded = true
+                    var url = window.URL.createObjectURL(blob);
+                    this.$refs.audio.src = url
+                });
+            },
+            writeUTFBytes(view, offset, string) {
+                for (var i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            },
+            play() {
+                if (this.isPlay) {
+                    this.$refs.audio.pause()
+                } else {
+                    this.$refs.audio.play()
+                }
+                this.isPlay = !this.isPlay
+                this.recoderBtnDisabled = !this.recoderBtnDisabled
+            },
+            next() {
+                // 切换词条文字状态
+                if (!this.isRecoded) {
+                    alert('录制完本条文案才可以切换下一条哦')
+                    return
+                }
+                if (this.idx < this.num) {
+                    if (this.idx % 4 == 0) {
+                        this.temporaryRecordText = this.allRecordText.slice(this.idx, this.idx + 4)
+                    }
+                    this.$refs.carousel.next()
+                    this.idx++
+                    this.isRecoded = false
+                }
+            },
+            saveFile(filename, data) {
+                let formData = new FormData()
+                formData.append('data', data)
+                formData.append('name', filename)
+                axios.post('/api/saveFile', formData, {
+                    headers: { 'Content-Type': "application/x-www-form-urlencoded" }
+                }).then(res => {
+                    console.log(res);
+                }).catch(err => {
+                    console.log(err);
+                });
+            },
+            getReadText() {
+                axios.get('/api/getReadText').then(res => {
+                    let result = res.data.split('\n')
+                    result.forEach(item => {
+                        this.allRecordText.push({
+                            id: item.slice(0, item.indexOf('	')),
+                            text: item.slice(item.indexOf('	') + 1)
+                        })
+                    });
+                    this.num = this.allRecordText.length
+                    this.temporaryRecordText = this.allRecordText.slice(0, 4)
+                }).catch(err => {
+                    console.log(err);
+                });
+            }
+        }
+    })
+</script>
+<style>
+    .form {
+        width: 400px;
+        margin: 48px auto;
+    }
+
+    .idx {
+        font-size: 12px;
+        color: #888888;
+        letter-spacing: 0;
+        position: absolute;
+        bottom: 28px;
+        right: 28px;
+        z-index: 999;
+    }
+
+    .recoder {
+        width: 400px;
+        margin: 0 auto;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .el-carousel {
+        width: 400px;
+        height: 200px;
+        margin-bottom: 24px;
+    }
+
+    .el-carousel__item {
+        width: 360px;
+        height: 150px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-sizing: border-box;
+        margin: 25px 20px;
+        padding: 0 24px;
+        border-radius: 4px;
+        border: 1px solid #ebeef5;
+        background-color: #fff;
+        box-shadow: 0 2px 12px 0 rgb(0 0 0 / 10%);
+    }
+
+    .el-carousel__container {
+        height: 200px;
+    }
+
+    .el-carousel__item h3 {
+        color: #475669;
+        font-size: 18px;
+        opacity: 0.75;
+        line-height: 300px;
+        margin: 0;
+    }
+
+    .el-carousel__arrow {
+        display: none;
+    }
+
+    .el-carousel__indicators {
+        display: none;
+    }
+
+    .el-button--primary:focus {
+        color: #FFF;
+        background-color: #409EFF;
+        border-color: #409EFF;
+    }
+</style>
