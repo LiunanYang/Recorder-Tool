@@ -5,61 +5,107 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- 引入样式 -->
-    <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
     <link rel="stylesheet" href="node_modules/element-ui/lib/theme-chalk/index.css">
-    <!-- 引入组件库 -->
-    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2"></script> -->
     <script src="node_modules/vue/dist/vue.js"></script>
-    <!-- <script src="https://unpkg.com/element-ui/lib/index.js"></script> -->
     <script src="node_modules/element-ui/lib/index.js"></script>
-    <!-- <script src="https://unpkg.com/axios/dist/axios.min.js"></script> -->
     <script src="node_modules/axios/dist/axios.min.js"></script>
-    <title>Document</title>
+    <script type="text/javascript" src="node_modules/js-audio-recorder/dist/recorder.js"></script>
+    <title>录音</title>
 </head>
 
 <body>
-    <div id="app">
-        <div class="form">
-            <el-form :model="form" ref="form" label-width="80px" :rules="rules" :disabled="formDisabled">
-                <el-form-item label="姓名" prop="name">
-                    <el-input v-model="form.name"></el-input>
-                </el-form-item>
-                <el-form-item label="性别" prop="female">
-                    <el-radio-group v-model="form.female">
-                        <el-radio label="男"></el-radio>
-                        <el-radio label="女"></el-radio>
-                    </el-radio-group>
-                </el-form-item>
-                <el-form-item label="年龄" prop="age">
-                    <el-input v-model.number="form.age" autocomplete="off"></el-input>
-                </el-form-item>
-                <el-form-item>
-                    <el-button type="primary" @click="submitForm()" :disabled="submitBtnDisabled"> 确认 </el-button>
-                    <el-button type="primary" @click="resetForm()" :disabled="resetBtnDisabled"> 切换账号 </el-button>
-                </el-form-item>
-            </el-form>
+    <div id="container">
+        <div class="left">
+            <div class="form">
+                <el-form :model="form" ref="form" label-width="80px" :rules="rules" :disabled="formDisabled">
+                    <el-form-item label="姓名" prop="name">
+                        <el-input v-model="form.name"></el-input>
+                    </el-form-item>
+                    <el-form-item label="性别" prop="female">
+                        <el-radio-group v-model="form.female">
+                            <el-radio label="男"></el-radio>
+                            <el-radio label="女"></el-radio>
+                        </el-radio-group>
+                    </el-form-item>
+                    <el-form-item label="年龄" prop="age">
+                        <el-input v-model.number="form.age" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="submitForm()" :disabled="submitBtnDisabled"> 确认 </el-button>
+                        <el-button type="primary" @click="resetForm()" :disabled="resetBtnDisabled"> 切换账号 </el-button>
+                    </el-form-item>
+                </el-form>
+            </div>
         </div>
-        <div class="recoder" v-show="recorderShow">
-            <audio src="" ref="audio" class="audio"></audio>
-            <el-carousel ref="carousel" :autoplay=false arrow="never">
-                <el-carousel-item v-for="(item, i) in readTextList" :key="i">
-                    <p>{{ item.text }}</p>
-                </el-carousel-item>
-                <span class="idx"> {{ idx }} / {{ num }} </span>
-            </el-carousel>
-            <el-button type="primary" @click="controlRecorder()" :disabled="recoderBtnDisabled"> {{ isRecording ? '停止' :
-                '开始录音' }}
-            </el-button>
-            <el-button type="primary" @click="play" :disabled="playBtnDisabled"> {{ isPlay ? '暂停' : '播放' }} </el-button>
-            <el-button type="primary" @click="next" :disabled="idx==num"> 下一条 </el-button>
+        <div class="right">
+            <div class="selects">
+                <div class="select-item">
+                    <span>采样率</span>
+                    <el-select v-model="sampleRate" placeholder="请选择">
+                        <el-option v-for="item in sampleRateOptions" :key="item.value" :label="item.text"
+                            :value="item.value">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div class="select-item">
+                    <span>采样位数</span>
+                    <el-select v-model="sampleBits" placeholder="请选择">
+                        <el-option v-for="item in sampleBitOptions" :key="item.value" :label="item.text"
+                            :value="item.value">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div class="select-item">
+                    <span>声道数</span>
+                    <el-select v-model="numChannels" placeholder="请选择">
+                        <el-option v-for="item in numChannelOptions" :key="item.value" :label="item.text"
+                            :value="item.value">
+                        </el-option>
+                    </el-select>
+                </div>
+                <div class="select-item">
+                    <span>保存文件名称类型</span>
+                    <el-select v-model="filenameType" placeholder="请选择">
+                        <el-option v-for="item in filenameTypeOptions" :key="item.value" :label="item.text"
+                            :value="item.value">
+                        </el-option>
+                    </el-select>
+                </div>
+            </div>
+            <div class="audio-info">
+                <div class="info-item">
+                    <span>{{this.duration}}</span>
+                    <span>录音时长（秒）</span>
+                </div>
+                <div class="info-item">
+                    <span>{{this.fileSize}}</span>
+                    <span>录音大小（字节）</span>
+                </div>
+            </div>
+            <div class="recoder" v-show="recorderShow">
+                <audio src="" ref="audio" class="audio"></audio>
+                <el-carousel ref="carousel" :autoplay=false arrow="never">
+                    <el-carousel-item v-for="(item, i) in temporaryRecordText" :key="i">
+                        <p>{{ item.text }}</p>
+                    </el-carousel-item>
+                    <span class="idx"> {{ idx }} / {{ num }} </span>
+                </el-carousel>
+                <div>
+                    <el-button type="primary" @click="controlRecorder()" :disabled="recoderBtnDisabled"> {{ isRecording ? '停止' :
+                        '开始录音' }}
+                    </el-button>
+                    <el-button type="primary" @click="play" :disabled="playBtnDisabled"> {{ isPlay ? '暂停' : '播放' }} </el-button>
+                    <el-button type="primary" @click="next" :disabled="idx==num || nextBtnDisabled"> 下一条 </el-button>
+                </div>
+                <canvas id="canvas"></canvas>
+            </div>
         </div>
     </div>
 </body>
 
 <script>
     new Vue({
-        el:'#app',
+        el: '#container',
         data() {
             return {
                 isRecording: false,
@@ -67,8 +113,8 @@
                 isPlay: false,
                 playBtnDisabled: false,
                 formDisabled: false,
-                resetBtnDisabled: true,
                 submitBtnDisabled: false,
+                nextBtnDisabled: false,
                 recorderShow: false,
                 form: {
                     name: "",
@@ -87,21 +133,50 @@
                         { type: 'number', message: '年龄必须为数字值' }
                     ]
                 },
-                readText: [],
-                readTextList: [],
+                allRecordText: [],
+                temporaryRecordText: [],
                 num: 0,
                 idx: 1,
-                leftchannel: [],
-                rightchannel: [],
+                isRecoded: false,
                 recorder: null,
-                recordingLength: 0,
-                mediaStream: null,
-                context: null,
-                sampleRate: 48000
+                sampleRate: 48000,
+                sampleBits: 16,
+                numChannels: 2,
+                wavEncoder: null,
+                isRecoded: false,
+                sampleRateOptions: [
+                    { text: '8000', value: 8000 },
+                    { text: '16000', value: 16000 },
+                    { text: '22050', value: 22050 },
+                    { text: '24000', value: 24000 },
+                    { text: '44100', value: 44100 },
+                    { text: '48000', value: 48000 },
+                ],
+                sampleBitOptions: [
+                    { text: '8', value: 8 },
+                    { text: '16', value: 16 },
+                ],
+                numChannelOptions: [
+                    { text: '单', value: 1 },
+                    { text: '双', value: 2 },
+                ],
+                filenameTypeOptions: [
+                    { text: '自动化名称', value: 1 },
+                    { text: 'TTS训练名称', value: 2 },
+                ],
+                duration: 0,
+                fileSize: 0,
+                filenameType: 2,
+                drawRecordId: null,
+                ctx: null
+            }
+        },
+        computed: {
+            resetBtnDisabled() {
+                return !(this.submitBtnDisabled && !this.isRecording && !this.isPlay)
             }
         },
         mounted() {
-            this.getReadText()
             this.$refs.audio.addEventListener('ended', () => {
                 this.isPlay = false
                 this.recoderBtnDisabled = false
@@ -111,10 +186,11 @@
             submitForm() {
                 this.$refs.form.validate((valid) => {
                     if (valid) {
-                        this.resetBtnDisabled = false
                         this.submitBtnDisabled = true
                         this.recorderShow = true
                         this.formDisabled = !this.formDisabled
+                        this.getReadText()
+                        this.isRecoded = false
                     } else {
                         return false;
                     }
@@ -122,129 +198,79 @@
             },
             resetForm() {
                 this.$refs.form.resetFields();
-                this.resetBtnDisabled = !this.resetBtnDisabled
                 this.submitBtnDisabled = !this.submitBtnDisabled
                 this.formDisabled = !this.formDisabled
-                this.recorderShow = !this.recorderShow 
+                this.recorderShow = !this.recorderShow
                 this.idx = 1
+                this.allRecordText = []
+                this.temporaryRecordText = []
             },
             controlRecorder() {
                 if (this.isRecording == true) {  // 录音中
-                    this.stopRecording() 
+                    this.stopRecording()
                 } else {
                     this.startRecording()
                 }
                 this.isRecording = !this.isRecording
                 this.playBtnDisabled = !this.playBtnDisabled
+                this.nextBtnDisabled = !this.nextBtnDisabled
             },
             startRecording() {
-                navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-                let _this = this
-                this.leftchannel = []
-                this.rightchannel = []
-                this.recordingLength = 0
-                const constraint = {
-                    audio: {
-                        sampleRate: this.sampleRate,
-                        channelCount: 2 // canary 中此设置未生效，始终为 2
-                    }
+                const config = {
+                    sampleBits: this.sampleBits,
+                    sampleRate: this.sampleRate,
+                    numChannels: this.numChannels
+                };
+                this.recorder = new Recorder(config);
+                this.recorder.onprogress = (params) => {
+                    this.duration = params.duration.toFixed(5),
+                    this.fileSize = params.fileSize
                 }
-                navigator.getUserMedia(constraint, e => {
-                    window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                    this.context = new AudioContext({ sampleRate: this.sampleRate });
-                    this.mediaStream = this.context.createMediaStreamSource(e);
-                    var bufferSize = 2048;
-                    var numberOfInputChannels = 2;
-                    var numberOfOutputChannels = 2;
-                    if (this.context.createScriptProcessor) {
-                        this.recorder = this.context.createScriptProcessor(
-                            bufferSize,
-                            numberOfInputChannels,
-                            numberOfOutputChannels
-                        );
-                    } else {
-                        this.recorder = this.context.createJavaScriptNode(
-                            bufferSize,
-                            numberOfInputChannels,
-                            numberOfOutputChannels
-                        );
-                    }
-                    this.recorder.onaudioprocess = e => {
-                        _this.leftchannel.push(
-                            new Float32Array(e.inputBuffer.getChannelData(0))
-                        );
-                        _this.rightchannel.push(
-                            new Float32Array(e.inputBuffer.getChannelData(1))
-                        );
-                        _this.recordingLength += bufferSize;
-                    };
-                    this.mediaStream.connect(this.recorder);
-                    this.recorder.connect(this.context.destination);
-                }, err => {
-                    console.error(err);
+                this.recorder.start().then(() => {
+                    console.log('开始录音');
+                }, (error) => {
+                    console.log(`异常了,${error.name}:${error.message}`);
                 });
+                this.drawRecord()
             },
             stopRecording() {
-                window.AudioContext = window.AudioContext || window.webkitAudioContext;
-                this.recorder.disconnect(this.context.destination);
-                this.mediaStream.disconnect(this.recorder);
-
-                var leftBuffer = this.flattenArray(this.leftchannel, this.recordingLength);
-                var rightBuffer = this.flattenArray(this.rightchannel, this.recordingLength);
-                var interleaved = this.interleave(leftBuffer, rightBuffer);
-
-                var buffer = new ArrayBuffer(44 + interleaved.length * 2);
-                var view = new DataView(buffer);
-
-                // RIFF chunk descriptor
-                this.writeUTFBytes(view, 0, "RIFF");
-                view.setUint32(4, 44 + interleaved.length * 2, true);
-                this.writeUTFBytes(view, 8, "WAVE");
-                // FMT sub-chunk
-                this.writeUTFBytes(view, 12, "fmt ");
-                view.setUint32(16, 16, true); // chunkSize
-                view.setUint16(20, 1, true); // wFormatTag
-                view.setUint16(22, 2, true); // wChannels: stereo (2 channels)
-                view.setUint32(24, this.sampleRate, true); // dwSamplesPerSec
-                view.setUint32(28, this.sampleRate * 4, true); // dwAvgBytesPerSec
-                view.setUint16(32, 4, true); // wBlockAlign
-                view.setUint16(34, 16, true); // wBitsPerSample
-                // data sub-chunk
-                this.writeUTFBytes(view, 36, "data");
-                view.setUint32(40, interleaved.length * 2, true);
-
-                // write the PCM samples
-                var index = 44;
-                var volume = 1;
-                for (var i = 0; i < interleaved.length; i++) {
-                    view.setInt16(index, interleaved[i] * (0x7fff * volume), true);
-                    index += 2;
-                }
-
-                let blob = new Blob([view], { type: "audio/wav" });
-                let form = this.form
-                let filename = `${form.name}_${form.female}_${form.age}_${this.readText[this.idx - 1].id}_${this.readText[this.idx - 1].text}.wav`
-                this.saveFile(filename, blob)
+                const blob = new Blob([this.recorder.getWAVBlob()], { type: "audio/wav" });
+                const form = this.form
+                //自动化名称
+                const filename1 = `${form.name}_${form.female}_${form.age}_${this.allRecordText[this.idx - 1].id}_${this.allRecordText[this.idx - 1].text}.wav`
+                //TTS训练名称
+                const filename2 = `${form.name}_${form.female}_${form.age}_${this.allRecordText[this.idx - 1].id}.wav`
+                this.saveFile(this.filenameType == 2 ? filename2 : filename1, blob)
+                this.isRecoded = true
                 var url = window.URL.createObjectURL(blob);
                 this.$refs.audio.src = url
+                this.drawRecordId && cancelAnimationFrame(this.drawRecordId);
+                this.drawRecordId = null;
             },
             play() {
                 if (this.isPlay) {
                     this.$refs.audio.pause()
                 } else {
-                    this.$refs.audio.play()   
+                    this.$refs.audio.play()
                 }
                 this.isPlay = !this.isPlay
                 this.recoderBtnDisabled = !this.recoderBtnDisabled
             },
             next() {
                 // 切换词条文字状态
+                if (!this.isRecoded) {
+                    alert('录制完本条文案才可以切换下一条哦')
+                    return
+                }
                 if (this.idx < this.num) {
                     if (this.idx % 4 == 0) {
-                        this.readTextList = this.readText.slice(this.idx, this.idx + 4)
+                        this.temporaryRecordText = this.allRecordText.slice(this.idx, this.idx + 4)
                     }
                     this.$refs.carousel.next()
                     this.idx++
+                    this.isRecoded = false
+                    this.duration = 0
+                    this.fileSize = 0
                 }
             },
             saveFile(filename, data) {
@@ -263,52 +289,77 @@
                 axios.get('/api/getReadText').then(res => {
                     let result = res.data.split('\n')
                     result.forEach(item => {
-                        this.readText.push({
+                        this.allRecordText.push({
                             id: item.slice(0, item.indexOf('	')),
                             text: item.slice(item.indexOf('	') + 1)
                         })
                     });
-                    this.num = this.readText.length
-                    this.readTextList = this.readText.slice(0, 4)
+                    this.num = this.allRecordText.length
+                    this.temporaryRecordText = this.allRecordText.slice(0, 4)
                 }).catch(err => {
                     console.log(err);
                 });
             },
-            flattenArray(channelBuffer, recordingLength) {
-                var result = new Float32Array(recordingLength);
-                var offset = 0;
-                for (var i = 0; i < channelBuffer.length; i++) {
-                    var buffer = channelBuffer[i];
-                    result.set(buffer, offset);
-                    offset += buffer.length;
-                }
-                return result;
-            },
-            interleave(leftChannel, rightChannel) {
-                var length = leftChannel.length + rightChannel.length;
-                var result = new Float32Array(length);
+            drawRecord() {
+                const oCanvas = document.getElementById('canvas');
+                let ctx = oCanvas.getContext("2d");
+                // 用requestAnimationFrame稳定60fps绘制
+                this.drawRecordId = requestAnimationFrame(this.drawRecord);
 
-                var inputIndex = 0;
+                // 实时获取音频大小数据
+                let dataArray = this.recorder.getRecordAnalyseData(),
+                    bufferLength = dataArray.length;
 
-                for (var index = 0; index < length;) {
-                    result[index++] = leftChannel[inputIndex];
-                    result[index++] = rightChannel[inputIndex];
-                    inputIndex++;
+                // 填充背景色
+                ctx.fillStyle = 'rgb(200, 200, 200)';
+                ctx.fillRect(0, 0, oCanvas.width, oCanvas.height);
+
+                // 设定波形绘制颜色
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgb(0, 0, 0)';
+
+                ctx.beginPath();
+
+                var sliceWidth = oCanvas.width * 1.0 / bufferLength, // 一个点占多少位置，共有bufferLength个点要绘制
+                    x = 0;          // 绘制点的x轴位置
+
+                for (var i = 0; i < bufferLength; i++) {
+                    var v = dataArray[i] / 128.0;
+                    var y = v * oCanvas.height / 2;
+
+                    if (i === 0) {
+                        // 第一个点
+                        ctx.moveTo(x, y);
+                    } else {
+                        // 剩余的点
+                        ctx.lineTo(x, y);
+                    }
+                    // 依次平移，绘制所有点
+                    x += sliceWidth;
                 }
-                return result;
-            },
-            writeUTFBytes(view, offset, string) {
-                for (var i = 0; i < string.length; i++) {
-                    view.setUint8(offset + i, string.charCodeAt(i));
-                }
-            },
+
+                ctx.lineTo(oCanvas.width, oCanvas.height / 2);
+                ctx.stroke();
+            }
         }
     })
 </script>
 <style>
+    #container {
+        display: flex;
+    }
+    .left {
+        height: 100vh;
+        flex-basis: 300px;
+        padding-right: 8px;
+        border-right: 1px solid rgba(34,36,38,.15);
+    }
+    .right {
+        margin-top: 24px;
+    }
     .form {
-        width: 400px;
-        margin: 48px auto;
+        width: 300px;
+        margin: 24px 10px 0 -10px;
     }
 
     .idx {
@@ -332,7 +383,6 @@
     .el-carousel {
         width: 400px;
         height: 200px;
-        margin-bottom: 24px;
     }
 
     .el-carousel__item {
@@ -368,5 +418,56 @@
 
     .el-carousel__indicators {
         display: none;
+    }
+
+    .el-button--primary:focus {
+        color: #FFF;
+        background-color: #409EFF;
+        border-color: #409EFF;
+    }
+
+    .audio-info {
+        display: flex;
+        justify-content: center;
+        margin-top: 30px;
+        font-weight: 400;
+        line-height: 1em;
+        color: #1b1c1d;
+        text-transform: uppercase;
+        text-align: center;
+    }
+
+    .selects {
+        display: flex;
+        justify-content: center;
+    }
+
+    .select-item {
+        margin: 0 10px;
+    }
+
+    .select-item span:first-child {
+        display: block;
+        margin: 0 0 0.28571429rem 0;
+        color: rgba(0, 0, 0, .87);
+        font-size: .92857143em;
+        font-weight: 700;
+        text-transform: none;
+    }
+
+    .info-item {
+        display: flex;
+        width: 200px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .info-item span:first-child {
+        width: 200px;
+        margin-bottom: 10px;
+        font-size: 34px;
+    }
+    #canvas {
+        margin-top: 16px;
     }
 </style>
