@@ -168,7 +168,8 @@
                 fileSize: 0,
                 filenameType: 2,
                 drawRecordId: null,
-                ctx: null
+                ctx: null,
+                oCanvas: null,
             }
         },
         computed: {
@@ -181,6 +182,8 @@
                 this.isPlay = false
                 this.recoderBtnDisabled = false
             })
+            this.oCanvas = document.getElementById('canvas');
+            this.ctx = this.oCanvas.getContext("2d");
         },
         methods: {
             submitForm() {
@@ -215,7 +218,7 @@
                 this.playBtnDisabled = !this.playBtnDisabled
                 this.nextBtnDisabled = !this.nextBtnDisabled
             },
-            startRecording() {
+            newRecorder() {
                 const config = {
                     sampleBits: this.sampleBits,
                     sampleRate: this.sampleRate,
@@ -226,6 +229,15 @@
                     this.duration = params.duration.toFixed(5),
                     this.fileSize = params.fileSize
                 }
+            },
+            destoryRecorder() {
+                // 销毁录音实例，置为null释放资源，fn为回调函数，
+                this.recorder.destroy().then(function() {
+                    this.recorder = null;
+                });
+            },
+            startRecording() {
+                this.newRecorder()
                 this.recorder.start().then(() => {
                     console.log('开始录音');
                 }, (error) => {
@@ -246,6 +258,7 @@
                 this.$refs.audio.src = url
                 this.drawRecordId && cancelAnimationFrame(this.drawRecordId);
                 this.drawRecordId = null;
+                this.destoryRecorder()
             },
             play() {
                 if (this.isPlay) {
@@ -301,8 +314,6 @@
                 });
             },
             drawRecord() {
-                const oCanvas = document.getElementById('canvas');
-                let ctx = oCanvas.getContext("2d");
                 // 用requestAnimationFrame稳定60fps绘制
                 this.drawRecordId = requestAnimationFrame(this.drawRecord);
 
@@ -311,35 +322,35 @@
                     bufferLength = dataArray.length;
 
                 // 填充背景色
-                ctx.fillStyle = 'rgb(200, 200, 200)';
-                ctx.fillRect(0, 0, oCanvas.width, oCanvas.height);
+                this.ctx.fillStyle = 'rgb(200, 200, 200)';
+                this.ctx.fillRect(0, 0, this.oCanvas.width, this.oCanvas.height);
 
                 // 设定波形绘制颜色
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = 'rgb(0, 0, 0)';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = 'rgb(0, 0, 0)';
 
-                ctx.beginPath();
+                this.ctx.beginPath();
 
-                var sliceWidth = oCanvas.width * 1.0 / bufferLength, // 一个点占多少位置，共有bufferLength个点要绘制
+                var sliceWidth = this.oCanvas.width * 1.0 / bufferLength, // 一个点占多少位置，共有bufferLength个点要绘制
                     x = 0;          // 绘制点的x轴位置
 
                 for (var i = 0; i < bufferLength; i++) {
                     var v = dataArray[i] / 128.0;
-                    var y = v * oCanvas.height / 2;
+                    var y = v * this.oCanvas.height / 2;
 
                     if (i === 0) {
                         // 第一个点
-                        ctx.moveTo(x, y);
+                        this.ctx.moveTo(x, y);
                     } else {
                         // 剩余的点
-                        ctx.lineTo(x, y);
+                        this.ctx.lineTo(x, y);
                     }
                     // 依次平移，绘制所有点
                     x += sliceWidth;
                 }
 
-                ctx.lineTo(oCanvas.width, oCanvas.height / 2);
-                ctx.stroke();
+                this.ctx.lineTo(this.oCanvas.width, this.oCanvas.height / 2);
+                this.ctx.stroke();
             }
         }
     })
